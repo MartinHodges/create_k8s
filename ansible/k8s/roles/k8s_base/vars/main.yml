@@ -1,0 +1,8 @@
+k8s_dependencies: 
+  - kubernetes-cni
+  - kubelet
+k8s_packages: 
+  - kubeadm
+
+k8s_url_apt_key: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+k8s_repository: "deb https://apt.kubernetes.io/ kubernetes-xenial main"

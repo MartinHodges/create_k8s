@@ -1,0 +1,15 @@
+---
+
+- hosts: k8s_master
+  become: true
+  roles:
+    - docker
+    - k8s_base
+    - k8s_master
+
+- hosts: k8s_node
+  become: true
+  roles:
+    - docker
+    - k8s_base
+    - k8s_node

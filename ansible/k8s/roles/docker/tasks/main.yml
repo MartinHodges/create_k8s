@@ -1,0 +1,52 @@
+- name: Install Docker
+  tags:
+  - docker
+  - k8s_base
+  - k8s_master
+  block:
+  - name: Configure Sysctl
+    sysctl:
+      name: "net.ipv4.ip_forward"
+      value: "1"
+      state: present
+
+  - name: Install Prerequisites Packages
+    package: name={{ item }} state=present force=yes
+    loop: "{{ docker_dependencies }}"
+
+  - name: Add GPG Keys
+    apt_key: 
+      url: "{{ docker_url_apt_key }}"
+
+  - name: Add Repo Source
+    apt_repository: 
+      repo: "{{ docker_repository }}"
+      update_cache: yes
+
+  - name: Install Specific Version of Docker Packages
+    package: name={{ item }} state=present force=yes install_recommends=no
+    loop: "{{ docker_packages }}"
+    notify:
+    - start_docker
+
+  - name: Enable CRI API
+    lineinfile:
+      path: /etc/containerd/config.toml
+      regexp: "disabled_plugins.*"
+      line: "disabled_plugins = []"
+      state: present
+
+  - name: Configure containerd - get default config
+    shell: containerd config default | tee /etc/containerd/config.toml
+
+  - name: Enable SystemdCgroup
+    shell:  sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml  
+    register: containerd
+
+  - name: Restart containerd after config change
+    service:
+      name: containerd
+      state: restarted
+    when: containerd.changed
+
+

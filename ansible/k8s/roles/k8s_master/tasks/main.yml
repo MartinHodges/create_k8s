@@ -1,0 +1,73 @@
+- name: Set up base config for k8s master and node
+  tags:
+    - k8s_master
+  block:
+    - name: Install Kubernetes Packages
+      package: name={{ item }} state=present force=yes install_recommends=no
+      loop: "{{ k8s_packages }}"
+  
+    - name: Initialise the Kubernetes cluster using kubeadm
+      become: true
+      command: kubeadm init --pod-network-cidr={{ k8s_pod_network }}
+      args:
+        creates: "{{ k8s_admin_config }}"
+
+    - name: Setup kubeconfig for {{ k8s_user }} user
+      file:
+        path: "{{ k8s_user_home }}/.kube"
+        state: directory
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: "0750"
+
+    - name: Copy {{ k8s_admin_config }}
+      become: true
+      copy:
+        src: "{{ k8s_admin_config }}"
+        dest: "{{ k8s_user_home }}/.kube/config"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: "0600"
+        remote_src: yes
+
+    - name: Download {{ calico_operator_url }}
+      get_url:
+        url: "{{ calico_operator_url }}"
+        dest: "{{ k8s_user_home }}/{{ calico_operator_config }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: "0640"     
+
+    - name: Download {{ calico_net_url }}
+      get_url:
+        url: "{{ calico_net_url }}"
+        dest: "{{ k8s_user_home }}/{{ calico_net_config }}"
+        owner: "{{ k8s_user }}"
+        group: "{{ k8s_user }}"
+        mode: "0640"     
+
+    - name: Install calico operator {{ calico_operator_config }}
+      become: false
+      command: kubectl create -f "{{ k8s_user_home }}/{{ calico_operator_config }}"
+
+    - name: Set CALICO_IPV4POOL_CIDR to {{ k8s_pod_network }}
+      replace:
+        path: "{{ k8s_user_home }}/{{ calico_net_config }}"
+        regexp: "192.168.0.0/16"
+        replace: "{{ k8s_pod_network }}"
+
+    - name: Install calico pod network {{ calico_net_config }}
+      become: false
+      command: kubectl apply -f "{{ k8s_user_home }}/{{ calico_net_config }}"
+
+    - name: wait for k8s API port to open
+      wait_for:
+        port: 6443
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: join_command
+
+    - name: Copy join command to local file
+      become: false
+      local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="{{ k8s_join_file }}"

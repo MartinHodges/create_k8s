@@ -1,0 +1,12 @@
+docker_dependencies:
+- ca-certificates
+- gnupg
+- gnupg2
+- gnupg-agent
+- software-properties-common
+- apt-transport-https
+- curl
+docker_packages:
+- docker-ce
+docker_url_apt_key: "https://download.docker.com/linux/debian/gpg"
+docker_repository: "deb [arch=amd64] https://download.docker.com/linux/debian bullseye stable"

@@ -1,0 +1,104 @@
+---
+
+- hosts: gw
+  become: yes
+  pre_tasks:
+
+  - name: install updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install nginx
+    package: name=nginx state=present force=yes install_recommends=no
+
+  - name: Install ufw firewall
+    package: name=ufw state=present force=yes install_recommends=no
+
+  - name: update sysctl
+    tags: always
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: true
+      state: present
+      reload: true
+
+  - name: change forward policy
+    lineinfile:
+      path: /etc/default/ufw
+      regexp: '^DEFAULT_FORWARD_POLICY="DROP"'
+      line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+      backrefs: yes
+    notify:
+      - restart_ufw
+
+  - name: allow SSH through the firewall
+    tags: always
+    ufw:
+      rule: allow
+      name: OpenSSH
+    notify:
+      - restart_ufw
+
+  - name: allow HTTP through the firewall
+    tags: always
+    ufw:
+      rule: allow
+      port: '80'
+      from: '0.0.0.0/0'
+      to: 'any'
+      protocol: tcp
+    notify:
+      - restart_ufw
+
+  - name: allow HTTPS outgoing through the firewall
+    tags: always
+    ufw:
+      rule: allow
+      port: '443'
+      from: '0.0.0.0/0'
+      to: 'any'
+      protocol: tcp
+    notify:
+      - restart_ufw
+
+  - name: add NAT to ufw
+    blockinfile:
+      path: /etc/ufw/before.rules
+      block: |
+        # NAT table rules
+        *nat
+        :POSTROUTING ACCEPT [0:0]
+
+        # Forward traffic through eth0
+        # Change to match your out-interface and local network
+        -A POSTROUTING -s 10.240.0.0/16 -o eth0 -j MASQUERADE
+        # don't delete the 'COMMIT' line or these nat table rules won't be processed
+        COMMIT
+
+      insertbefore: "^# Don't delete these required lines"
+    notify:
+      - restart_ufw
+
+  - name: configure openVPN
+    tags: always
+    become: yes
+    copy:
+      src: network.conf
+      dest: /etc/netplan/55-local.yaml
+      owner: root
+      group: root
+      mode: 0440
+  
+  - name: Apply netplan
+    tags: always
+    become: yes
+    command: netplan apply
+
+  handlers:
+    - name: restart_ufw
+      ufw:
+        state: enabled

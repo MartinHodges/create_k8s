@@ -1,0 +1,15 @@
+- name: Copy {{ k8s_join_file }} to server location
+  tags: k8s_node
+  copy: 
+    src: "{{ k8s_join_file }}"
+    dest: "{{ k8s_user_home }}/{{ k8s_join_file }}.sh"
+    owner: "{{ k8s_user }}"
+    group: "{{ k8s_user }}"
+    mode: "0750"
+
+- name: Join the node to cluster unless file {{ k8s_kubelet_config }} exists
+  tags: k8s_node
+  become: true
+  command: sh "{{ k8s_user_home }}/{{ k8s_join_file }}.sh"
+  args:
+    creates: "{{ k8s_kubelet_config }}"

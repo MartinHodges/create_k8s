@@ -1,0 +1,64 @@
+---
+
+- hosts: all
+  become: yes
+  pre_tasks:
+
+  - name: install updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: install sudoers for Ubuntu servers
+    tags: debian
+    apt:
+      name:
+        - sudo
+      state: latest
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: create server-admin user
+    tags: always
+    user:
+      name: server-admin
+      groups: root
+      shell: "/bin/bash"
+
+  - name: Set authorized key taken from file
+    authorized_key:
+      user: server-admin
+      state: present
+      key: "{{ lookup('file', '~/.ssh/bl_rsa.pub') }}"
+
+  - name: add sudoers file for server-admin
+    tags: always
+    copy:
+      src: sudoer_server-admin
+      dest: /etc/sudoers.d/server-admin
+      owner: root
+      group: root
+      mode: 0440
+
+  - name: generate sshd_config file from template
+    tags: ssh
+    vars:
+      ssh_users: server-admin
+    template:
+      src: "sshd_config.j2"
+      dest: /etc/ssh/sshd_config
+      owner: root
+      group: root
+      mode: 0644
+    notify: restart_sshd
+
+  handlers:
+  - name: restart_sshd
+    service:
+      name: sshd
+      state: restarted

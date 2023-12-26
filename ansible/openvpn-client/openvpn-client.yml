@@ -1,0 +1,141 @@
+---
+
+- hosts: open_vpn
+  become: no
+  tasks:
+  - name: has pki been set up?
+    stat:
+      path: /home/server-admin/my-server/pki
+    register: pki
+  - block:
+    - name: create client folders
+      tags: always
+      file:
+        path: /home/server-admin/my-clients
+        owner: server-admin
+        group: server-admin
+        mode: '700'
+        state: directory
+
+    - name: create client keys folders
+      tags: always
+      file:
+        path: /home/server-admin/my-clients/keys
+        owner: server-admin
+        group: server-admin
+        mode: '700'
+        state: directory
+
+    - name: create client files folders
+      tags: always
+      file:
+        path: /home/server-admin/my-clients/files
+        owner: server-admin
+        group: server-admin
+        mode: '700'
+        state: directory
+
+    - name: generate client CSR
+      tags: always
+      shell:
+        chdir: /home/server-admin/my-server
+        cmd: ./easyrsa gen-req openvpn-client nopass batch
+        creates: /home/server-admin/my-server/pki/reqs/openvpn-client.req
+
+#    - name: save client key
+#      tags: always
+#      shell:
+#        cmd: sudo cp /home/server-admin/my-server/pki/private/openvpn-client.key /etc/openvpn/openvpn-client.key
+#        creates: /etc/openvpn/openvpn-client.key
+
+    - name: Save CSR to local
+      tags: always
+      fetch:
+        src: /home/server-admin/my-server/pki/reqs/openvpn-client.req
+        dest: ~/
+        flat: true
+
+    - name: has crt already been uploaded?
+      stat:
+        path: /home/server-admin/my-clients/keys/openvpn-client.crt
+      register: crt
+
+    - name: Wait for signed cert
+      tags: always
+      pause:
+        prompt: 'Create openvpn-client.crt on your local home directory and press enter'
+      when: crt.stat.exists == false
+
+    - name: Save CRT to remote
+      tags: always
+      copy:
+        src: ~/openvpn-client.crt
+        dest: /home/server-admin/my-clients/keys/openvpn-client.crt
+
+    - name: save ta key
+      tags: always
+      shell:
+        cmd: sudo cp /home/server-admin/my-server/ta.key /home/server-admin/my-clients/keys/ta.key
+        creates: /home/server-admin/my-clients/keys/ta.key
+
+    - name: change ownership of ta key
+      tags: always
+      shell:
+        cmd: sudo chown server-admin:server-admin /home/server-admin/my-clients/keys/ta.key
+
+    - name: save ca key
+      tags: always
+      shell:
+        cmd: cp /etc/openvpn/ca.crt /home/server-admin/my-clients/keys/ca.crt
+        creates: /home/server-admin/my-clients/keys/ca.crt
+
+    - name: change ownership of ca CRT
+      tags: always
+      shell:
+        cmd: sudo chown server-admin:server-admin /home/server-admin/my-clients/keys/ca.crt
+
+    - name: save client key
+      tags: always
+      shell:
+        cmd: cp /home/server-admin/my-server/pki/private/openvpn-client.key /home/server-admin/my-clients/keys
+        creates: /home/server-admin/my-clients/keysopenvpn-client.key
+
+    - name: create base for client ovpn file
+      tags: always
+      copy:
+        src: base.conf
+        dest: /home/server-admin/my-clients
+        owner: server-admin
+        group: server-admin
+
+    - name: update base client ovpn file with IP address
+      tags: always
+      lineinfile:
+        dest: /home/server-admin/my-clients/base.conf
+        regexp: 'remote IP 1194'
+        line: "remote {{inventory_hostname}} 1194"
+
+    - name: create script for creating ovpn config file
+      tags: always
+      copy:
+        src: make_config.sh
+        dest: /home/server-admin/my-clients
+        owner: server-admin
+        group: server-admin
+        mode: '700'
+
+    - name: create opnvpn config file
+      tags: always
+      shell:
+        chdir: /home/server-admin/my-clients
+        cmd: ./make_config.sh openvpn-client
+        creates: /home/my-clients/files/openvpn-client.ovpn
+
+    - name: Save ovpn config to local
+      tags: always
+      fetch:
+        src: /home/server-admin/my-clients/files/openvpn-client.ovpn
+        dest: ~/
+        flat: true
+
+    when: pki.stat.exists

@@ -1,0 +1,225 @@
+---
+
+- hosts: open_vpn
+  become: yes
+  pre_tasks:
+
+  - name: install updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install easy-rsa
+    package: name=easy-rsa state=present force=yes install_recommends=no
+
+  - name: Install openVPN
+    package: name=openvpn state=present force=yes install_recommends=no
+
+  - name: Install ufw firewall
+    package: name=ufw state=present force=yes install_recommends=no
+
+  - name: update sysctl
+    tags: always
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: true
+      state: present
+      reload: true
+
+  - name: change forward policy
+    lineinfile:
+      path: /etc/default/ufw
+      regexp: '^DEFAULT_FORWARD_POLICY="DROP"'
+      line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+      backrefs: yes
+    notify:
+      - restart_ufw
+
+  - name: allow SSH through the firewall
+    tags: always
+    ufw:
+      rule: allow
+      name: OpenSSH
+    notify:
+      - restart_ufw
+
+  - name: allow openVPN through the firewall
+    tags: always
+    ufw:
+      rule: allow
+      port: '1194'
+      protocol: udp
+    notify:
+      - restart_ufw
+
+  - name: add NAT to ufw
+    blockinfile:
+      path: /etc/ufw/before.rules
+      block: |
+        # NAT table rules
+        *nat
+        :POSTROUTING ACCEPT [0:0]
+
+        # Forward traffic through eth0
+        # Change to match your out-interface and local network
+        -A POSTROUTING -s 10.8.0.0/8 -o eth0 -j MASQUERADE
+        # don't delete the 'COMMIT' line or these nat table rules won't be processed
+        COMMIT
+
+      insertbefore: "^# Don't delete these required lines"
+    notify:
+      - restart_ufw
+
+  handlers:
+    - name: restart_ufw
+      ufw:
+        state: enabled
+
+- hosts: open_vpn
+  become: no
+  tasks:
+
+  - name: create server-admin folders
+    tags: always
+    file:
+      path: /home/server-admin/my-server
+      owner: server-admin
+      group: server-admin
+      mode: '700'
+      state: directory
+
+  - name: find easy-rsa files
+    tags: always
+    find:
+      path: /usr/share/easy-rsa
+      recurse: no
+      pattern: "*"
+    register: easyrsa_files
+
+  - name: link to easy-rsa
+    tags: always
+    file:
+      src: "{{ item.path }}"
+      dest: "/home/server-admin/my-server/{{ item.path | basename }}"
+      state: link
+    with_items: "{{ easyrsa_files.files }}"
+
+  - name: initialise PKI
+    tags: always
+    shell:
+      chdir: /home/server-admin/my-server
+      cmd: ./easyrsa init-pki
+      creates: /home/server-admin/my-server/pki
+
+  - name: generate CSR
+    tags: always
+    shell:
+      chdir: /home/server-admin/my-server
+      cmd: ./easyrsa gen-req openvpn-server nopass batch
+      creates: /home/server-admin/my-server/pki/reqs/openvpn-server.req
+
+  - name: Save CSR to local
+    tags: always
+    fetch:
+      src: /home/server-admin/my-server/pki/reqs/openvpn-server.req
+      dest: ~/
+      flat: true
+
+  - name: has crt already been uploaded?
+    stat:
+      path: /etc/openvpn/server.crt
+    register: crt
+
+  - name: Wait for signed cert
+    tags: always
+    pause:
+      prompt: 'Create openvpn-server.crt on your local home directory and press enter'
+    when: crt.stat.exists == false
+
+  - name: Save server CRT to remote
+    tags: always
+    copy:
+      src: ~/openvpn-server.crt
+      dest: /home/server-admin/openvpn-server.crt
+
+  - name: install signed crt
+    tags: always
+    shell:
+      cmd: sudo mv  /home/server-admin/openvpn-server.crt /etc/openvpn/server.crt
+      creates: /etc/openvpn/server.crt
+
+  - name: has ca.crt already been uploaded?
+    stat:
+      path: /etc/openvpn/ca.crt
+    register: cacrt
+
+  - name: Wait for ca certificate
+    tags: always
+    pause:
+      prompt: 'Copy your ca.crt to your local home directory and press enter'
+    when: cacrt.stat.exists == false
+
+  - name: Save CA CRT to remote
+    tags: always
+    copy:
+      src: ~/ca.crt
+      dest: /home/server-admin/ca.crt
+
+  - name: install ca crt
+    tags: always
+    shell:
+      cmd: sudo cp /home/server-admin/ca.crt /etc/openvpn/ca.crt
+      creates: /etc/openvpn/ca.crt
+
+  - name: install server key
+    tags: always
+    shell:
+      cmd: sudo cp /home/server-admin/my-server/pki/private/openvpn-server.key /etc/openvpn/server.key
+      creates: /etc/openvpn/server.key
+
+  - name: generate DH key
+    tags: always
+    shell:
+      chdir: /home/server-admin/my-server
+      cmd: ./easyrsa gen-dh
+      creates: /home/server-admin/my-server/pki/dh.pem
+
+  - name: install DH key
+    tags: always
+    shell:
+      cmd: sudo cp /home/server-admin/my-server/pki/dh.pem /etc/openvpn/dh.pem
+      creates: /etc/openvpn/dh.pem
+
+  - name: generate HMAC key
+    tags: always
+    shell:
+      chdir: /home/server-admin/my-server
+      cmd: sudo openvpn --genkey --secret ta.key
+      creates: /home/server-admin/my-server/ta.key
+
+  - name: install HMAC key
+    tags: always
+    shell:
+      cmd: sudo cp /home/server-admin/my-server/ta.key /etc/openvpn/ta.key
+      creates: /etc/openvpn/ta.key
+
+  - name: configure openVPN
+    tags: always
+    become: yes
+    copy:
+      src: server.conf
+      dest: /etc/openvpn/server.conf
+      owner: root
+      group: root
+      mode: 0440
+
+  - name: Start openvpn systemd service
+    become: true
+    systemd:
+      name: openvpn
+      state: started
+      daemon_reload: yes
+      enabled: yes

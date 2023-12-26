@@ -1,0 +1,38 @@
+
+- name: Set up base config for k8s master and node
+  tags:
+    - k8s_base
+    - k8s_master
+    - k8s_node
+  block:
+    - name: Disable SWAP K8S will not work with swap enabled (1/2)
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: Remove SWAP from fstab K8S will not work with swap enabled (2/2)
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+      - swap
+      - none
+
+    - name: Add GPG Key
+      apt_key:
+        url: "{{ k8s_url_apt_key }}"
+        state: present
+      register: add_repository_key
+
+    - name: Add Kubernetes Repository
+      apt_repository: 
+        repo: "{{ k8s_repository }}"
+        update_cache: yes
+
+    - name: Install Dependencies
+      package: name={{ item }} state=present force=yes install_recommends=no
+      loop: "{{ k8s_dependencies }}"
+
+    - name: Install Kubernetes Packages
+      package: name={{ item }} state=present force=yes install_recommends=no
+      loop: "{{ k8s_packages }}"

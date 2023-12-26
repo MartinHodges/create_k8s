@@ -1,0 +1,25 @@
+# Terraform
+
+#  Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# .tfvars files
+*.tfvars
+
+# ides
+.idea/
+.vscode/
+*.iml
+
+# logs
+*.log
+
+# Mac OS X stuff...
+.DS_Store
+
+# Ansible
+join*
