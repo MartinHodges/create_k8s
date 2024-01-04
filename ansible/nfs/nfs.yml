@@ -1,0 +1,46 @@
+---
+
+- hosts: nfs_server
+  become: yes
+  tasks:
+
+  - name: install updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install nfs server
+    apt:
+      name: nfs-kernel-server
+      state: present
+      force: yes
+      install_recommends: no
+
+  - name: Set up nfs shares
+    tags: always
+    copy:
+      src: exports
+      dest: /etc/exports
+      owner: root
+      group: root
+      mode: 0440
+    notify: restart_nfs
+
+  - name: Ensure (needs to be linked to exports file)
+    tags: always
+    file:
+      path: '/pv-share'
+      state: directory
+      owner: root
+      group: root
+      mode: 0777
+    notify: restart_nfs
+
+  handlers:
+    - name: restart_nfs
+      service:
+        name: nfs-server
+        state: restarted
+        enabled: true

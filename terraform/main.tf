@@ -83,11 +83,25 @@ output "k8s_node_2" {
   value = module.k8s_node_2.v4_ips
 }
 
+module "nfs_server" {
+  source = "./modules/private_vps"
+  vps_name = "${var.project_prefix}-nfs-server"
+  vps_flavour = "std-1vcpu"
+  vpc_id = module.vpc.vpc_desc.id
+  ssh_key = var.ssh_key
+}
+
+output "nfs_server" {
+  description = "nfs_server"
+  value = module.nfs_server.v4_ips
+}
+
 resource "local_file" "inventory" {
   filename = "../ansible/inventory"
   content = templatefile("ansible_inventory.tftpl", {
     openvpn_ip = module.openvpn.v4_ips.public
     gw_ip = module.gw.v4_ips.public
+    nfs_ip = module.nfs_server.v4_ips.private
     master_ip = module.k8s_master.v4_ips.private
     node_ips = [
       module.k8s_node_1.v4_ips.private,

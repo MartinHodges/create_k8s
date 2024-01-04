@@ -10,8 +10,9 @@ It creates:
 - A gateway server as an ingress point
 - 1 k8s master node
 - 2 k8s worker nodes
+- 1 nfs server
 
-It also creates the client configuration for the openVPN service. It also installs the gateway service as an egress point to the Internet for all private servers to allow them to access the repositories they need to update.
+It creates the client configuration for the openVPN service. It also installs the gateway service as an egress point to the Internet for all private servers to allow them to access the repositories they need to update.
 
 ## Create the VPC and VPSs
 
@@ -56,7 +57,12 @@ Each private VPS needs to be able to access the Internet in order to access upgr
 Once you have this up and running and and can SSH into each of the k8s nodes, you can then bootstrap them:
 
     cd ../bootstrap
-    ansible-playbook bootstrap.yml --limit k8s_master,k8s_node
+    ansible-playbook bootstrap.yml --limit k8s_master,k8s_node,nfs_server
+
+You can now create your nfs server:
+
+    cd ../nfs
+    ansible-playbook nfs.yml
 
 Now everything is set up, Kubernetes can now be installed:
 
