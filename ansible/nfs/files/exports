@@ -1,1 +1,2 @@
 /pv-share *(rw,async,no_subtree_check)
+/pv-share/auto *(rw,async,no_subtree_check)

@@ -38,6 +38,16 @@
       mode: 0777
     notify: restart_nfs
 
+  - name: Ensure (needs to be linked to exports file)
+    tags: always
+    file:
+      path: '/pv-share/auto'
+      state: directory
+      owner: root
+      group: root
+      mode: 0777
+    notify: restart_nfs
+
   handlers:
     - name: restart_nfs
       service:
