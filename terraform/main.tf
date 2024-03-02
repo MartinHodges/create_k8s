@@ -20,7 +20,7 @@ output "vpc" {
 module "gw" {
   source = "./modules/public_vps"
   vps_name = "${var.project_prefix}-gw"
-  vps_flavour = "std-1vcpu"
+  vps_flavour = "std-min"
   vpc_id = module.vpc.vpc_desc.id
   ssh_key = var.ssh_key
 }
@@ -33,7 +33,7 @@ output "gw" {
 module "openvpn" {
   source = "./modules/public_vps"
   vps_name = "${var.project_prefix}-openvpn"
-  vps_flavour = "std-1vcpu"
+  vps_flavour = "std-min"
   vpc_id = module.vpc.vpc_desc.id
   ssh_key = var.ssh_key
   port_blocking = false
