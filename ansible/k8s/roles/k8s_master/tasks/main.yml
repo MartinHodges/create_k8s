@@ -30,35 +30,44 @@
         mode: "0600"
         remote_src: yes
 
-    - name: Download {{ calico_operator_url }}
-      get_url:
-        url: "{{ calico_operator_url }}"
-        dest: "{{ k8s_user_home }}/{{ calico_operator_config }}"
-        owner: "{{ k8s_user }}"
-        group: "{{ k8s_user }}"
-        mode: "0640"     
+    - name: has calico been set up?
+      stat:
+        path: /home/server-admin/calico.yaml
+      register: calico
 
-    - name: Download {{ calico_net_url }}
-      get_url:
-        url: "{{ calico_net_url }}"
-        dest: "{{ k8s_user_home }}/{{ calico_net_config }}"
-        owner: "{{ k8s_user }}"
-        group: "{{ k8s_user }}"
-        mode: "0640"     
+    - block:
 
-    - name: Install calico operator {{ calico_operator_config }}
-      become: false
-      command: kubectl create -f "{{ k8s_user_home }}/{{ calico_operator_config }}"
+      - name: Download {{ calico_operator_url }}
+        get_url:
+          url: "{{ calico_operator_url }}"
+          dest: "{{ k8s_user_home }}/{{ calico_operator_config }}"
+          owner: "{{ k8s_user }}"
+          group: "{{ k8s_user }}"
+          mode: "0640"     
 
-    - name: Set CALICO_IPV4POOL_CIDR to {{ k8s_pod_network }}
-      replace:
-        path: "{{ k8s_user_home }}/{{ calico_net_config }}"
-        regexp: "192.168.0.0/16"
-        replace: "{{ k8s_pod_network }}"
+      - name: Download {{ calico_net_url }}
+        get_url:
+          url: "{{ calico_net_url }}"
+          dest: "{{ k8s_user_home }}/{{ calico_net_config }}"
+          owner: "{{ k8s_user }}"
+          group: "{{ k8s_user }}"
+          mode: "0640"     
 
-    - name: Install calico pod network {{ calico_net_config }}
-      become: false
-      command: kubectl apply -f "{{ k8s_user_home }}/{{ calico_net_config }}"
+      - name: Install calico operator {{ calico_operator_config }}
+        become: false
+        command: kubectl create -f "{{ k8s_user_home }}/{{ calico_operator_config }}"
+
+      - name: Set CALICO_IPV4POOL_CIDR to {{ k8s_pod_network }}
+        replace:
+          path: "{{ k8s_user_home }}/{{ calico_net_config }}"
+          regexp: "192.168.0.0/16"
+          replace: "{{ k8s_pod_network }}"
+
+      - name: Install calico pod network {{ calico_net_config }}
+        become: false
+        command: kubectl apply -f "{{ k8s_user_home }}/{{ calico_net_config }}"
+
+      when: not calico.stat.exists
 
     - name: wait for k8s API port to open
       wait_for:
@@ -71,3 +80,15 @@
     - name: Copy join command to local file
       become: false
       local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="{{ k8s_join_file }}"
+
+    - name: Install helm if not exists
+      unarchive:
+        src: https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz
+        dest: /usr/local/bin
+        extra_opts: "--strip-components=1"
+        owner: root
+        group: root
+        mode: 0755
+        remote_src: true
+      args:
+        creates: /usr/local/bin/helm

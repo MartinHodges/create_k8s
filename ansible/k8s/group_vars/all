@@ -9,6 +9,7 @@ calico_operator_url: "https://raw.githubusercontent.com/projectcalico/calico/v3.
 calico_operator_config: "tigera-operator.yaml"
 calico_net_url: "https://docs.projectcalico.org/manifests/calico.yaml"
 calico_net_config: "calico.yaml"
+helm_version: v3.14.2
 
 # calico_rbac_url: "https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml"
 # calico_rbac_config: "rbac-kdd.yaml"
