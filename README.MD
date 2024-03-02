@@ -28,7 +28,7 @@ To create the infrastructure, execute these from the project's root folder.
 As Terraform does not allow any resource to be touched multiple times and as the VPC depends on the gw VPS, which depends on the VPC, this step has to be done manually.
 
 Add a static route to the VPC to allow private VPSs to acess the Internet. The route should be defined as:
-0.0.0.0/0 -> <eg-gw private ip address> Private VPS Egress
+0.0.0.0/0 -> {eg-gw private ip address} Private VPS Egress
 
 ## Configure access to the VPC
 
