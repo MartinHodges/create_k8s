@@ -49,10 +49,10 @@ After starting the openVPN sever, you will need to create a client configuration
 
 This produces a client configuration in your home folder on your local machine (openvpn-client.ovpn). Yuo will need to install this into your local VPN client software and connect to the open VPN server. You cannot continue until you do this as you cannot access your private k8s servers.
 
-Each private VPS needs to be able to access the Internet in order to access upgrades and packages. The gateway provides a Network Address Translation (NAT) gateway and nginx proxy. We bootstrapped it earlier so now it just needs to be set up:
+Each private VPS needs to be able to access the Internet in order to access upgrades and packages. The gateway provides a Network Address Translation (NAT) gateway and nginx proxy. We bootstrapped it earlier so now it just needs to be set up. Note the need to repalce { } field with your own custom domain for which you shoud  have a wildcard certificate and CA certificate:
 
     cd ../gateway
-    ansible-playbook gateway.yml
+    ansible-playbook gateway.yml --extra-vars "custom_domain={DOMAIN NAME}"
 
 Once you have this up and running and and can SSH into each of the k8s nodes, you can then bootstrap them:
 

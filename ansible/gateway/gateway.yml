@@ -14,6 +14,68 @@
   - name: Install nginx
     package: name=nginx state=present force=yes install_recommends=no
 
+
+  - name: has CUSTOM DOMAIN.crt already been uploaded?
+    stat:
+      path: /etc/ssl/{{ custom_domain }}.crt
+    register: custom_crt
+
+  - name: Wait for signed cert
+    tags: always
+    pause:
+      prompt: 'Create {{ custom_domain }}.crt on your local home directory and press enter'
+    when: custom_crt.stat.exists == false
+
+  - name: Save CRT to remote
+    tags: always
+    copy:
+      src: ~/{{ custom_domain }}.crt
+      dest: /etc/ssl/{{ custom_domain }}.crt
+    when: custom_crt.stat.exists == false
+
+
+  - name: has CUSTOM DOMAIN.key already been uploaded?
+    stat:
+      path: /etc/ssl/{{ custom_domain }}.key
+    register: custom_key
+
+  - name: Wait for key
+    tags: always
+    pause:
+      prompt: 'Create {{ custom_domain }}.key on your local home directory and press enter'
+    when: custom_key.stat.exists == false
+
+  - name: Save KEY to remote
+    tags: always
+    copy:
+      src: ~/{{ custom_domain }}.key
+      dest: /etc/ssl/{{ custom_domain }}.key
+    when: custom_key.stat.exists == false
+
+
+  - name: generate nginx sites-available file from template
+    tags: always
+    vars:
+      k8s_master: "{{ groups['k8s_master'][0] }}"
+      k8s_node_1: "{{ groups['k8s_node'][0] }}"
+      k8s_node_2: "{{ groups['k8s_node'][1] }}"
+      domain: "{{ custom_domain }}"
+    template:
+      src: "nginx_config.j2"
+      dest: /etc/nginx/sites-available/apisix.{{ custom_domain }}
+      owner: root
+      group: root
+      mode: 0644
+    notify: restart_nginx
+
+  - name: link to sites-enabled
+    tags: always
+    file:
+      src: /etc/nginx/sites-available/apisix.{{ custom_domain }}
+      dest: /etc/nginx/sites-enabled/apisix.{{ custom_domain }}
+      state: link
+    notify: restart_nginx
+
   - name: Install ufw firewall
     package: name=ufw state=present force=yes install_recommends=no
 
@@ -102,3 +164,7 @@
     - name: restart_ufw
       ufw:
         state: enabled
+    - name: restart_nginx
+      service:
+        name: nginx
+        state: restarted
