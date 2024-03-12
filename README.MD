@@ -101,10 +101,31 @@ Now everything is set up, Kubernetes can now be installed:
 
 With Kubernetes installed, the basic Kubernetes infrastructure can be installed.
 The following will install:
+- k8s_service_mesh (istio)
 - k8s_your_domain - certificates and coreDNS update for custom domain
-- k8s_storage - setups a auto-provisioner for your NFS service
-- k8s_gateway - installs and configures a APISIX API Gateway
-- k8s_test_service - deploys an instance of a simple test service
+- k8s_storage - setups a auto-provisioner for your NFS service (nfs-subdir-external-provisioner)
+- k8s_gateway - installs and configures an API Gateway (APISIX)
+- k8s_test_service - deploys an instance of a simple test service (nginx)
+- k8s_vault - deploys Hashicorp Vault instance - 2 nodes *
+
+'*' note that this will pause whilst a set of manual commands are undertaken to initialise and
+unseal the vault. THe manual commands are shown after the following:
 
     cd ../k8s-config
     ansible-playbook k8s-config.yml --extra-var "custom_domain={DOMAIN NAME}"
+
+Commands to unseal the vault:
+
+    kubectl exec -it vault-0 -n vault -- sh
+    vault status
+    vault operator init -n 1 -t 1
+    vault operator unseal {unseal key from previous command}
+    exit
+    kubectl exec -it vault-0 -n vault -- sh
+    vault status
+    vault operator raft join http://vault-active:8200
+    vault operator unseal {unseal key from earlier command}
+    exit
+
+Note that the -n 1 -t 1 creates a shamir key with 1 key and only needing 1 key to unseal.
+You may wish to use larger numbers, eg: -n 5 -t 3.
