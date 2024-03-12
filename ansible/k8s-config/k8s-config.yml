@@ -1,0 +1,10 @@
+- hosts: k8s_master
+  become: true
+  roles:
+    # - k8s_service_mesh
+    - k8s_your_domain
+    - k8s_storage
+    - k8s_gateway
+    - k8s_test_service
+    - k8s_monitoring
+    - k8s_vault

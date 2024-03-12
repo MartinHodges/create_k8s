@@ -1,2 +1,3 @@
 k8s_packages: 
   - kubectl
+  - python3-pip

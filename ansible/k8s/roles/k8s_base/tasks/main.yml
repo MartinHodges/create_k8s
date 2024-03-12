@@ -18,16 +18,15 @@
       - swap
       - none
 
-    - name: Add GPG Key
-      apt_key:
-        url: "{{ k8s_url_apt_key }}"
-        state: present
-      register: add_repository_key
+    - name: Get Kubernetes package key
+      shell: curl -fsSL {{ k8s_url_apt_key }} | gpg --dearmor -o {{ k8s_gpgpath }}
+      args:
+        creates: "{{ k8s_gpgpath }}"
 
-    - name: Add Kubernetes Repository
-      apt_repository: 
-        repo: "{{ k8s_repository }}"
-        update_cache: yes
+    - name: Install Kubernetes repository
+      apt_repository:
+        filename: kubernetes
+        repo: "deb [signed-by={{ k8s_gpgpath }}] {{ k8s_repository }} /"
 
     - name: Install Dependencies
       package: name={{ item }} state=present force=yes install_recommends=no

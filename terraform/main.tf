@@ -60,7 +60,7 @@ output "k8s_master" {
 module "k8s_node_1" {
   source = "./modules/private_vps"
   vps_name = "${var.project_prefix}-k8s-node-1"
-  vps_flavour = "std-1vcpu"
+  vps_flavour = "std-2vcpu"
   vpc_id = module.vpc.vpc_desc.id
   ssh_key = var.ssh_key
 }
@@ -73,7 +73,7 @@ output "k8s_node_1" {
 module "k8s_node_2" {
   source = "./modules/private_vps"
   vps_name = "${var.project_prefix}-k8s-node-2"
-  vps_flavour = "std-1vcpu"
+  vps_flavour = "std-2vcpu"
   vpc_id = module.vpc.vpc_desc.id
   ssh_key = var.ssh_key
 }
@@ -86,7 +86,7 @@ output "k8s_node_2" {
 module "nfs_server" {
   source = "./modules/private_vps"
   vps_name = "${var.project_prefix}-nfs-server"
-  vps_flavour = "std-1vcpu"
+  vps_flavour = "std-min"
   vpc_id = module.vpc.vpc_desc.id
   ssh_key = var.ssh_key
 }
@@ -107,6 +107,17 @@ resource "local_file" "inventory" {
       module.k8s_node_1.v4_ips.private,
       module.k8s_node_2.v4_ips.private
     ]
+  })
+}
+
+resource "local_file" "etc-hosts" {
+  filename = "etc-hosts"
+  content = templatefile("hosts.tftpl", {
+    gw_ip = module.gw.v4_ips.public
+    nfs_ip = module.nfs_server.v4_ips.private
+    openvpn_ip = module.openvpn.v4_ips.public
+    master_ip = module.k8s_master.v4_ips.private
+    custom_domain = var.custom_domain
   })
 }
 

@@ -1,0 +1,66 @@
+- name: Set up Kubernetes to use your domain
+  become: false
+  tags:
+    - k8s_master
+  block:
+    - name: Setup TLS Lets Encrypt CA certificate
+      tags: always
+      become: yes
+      copy:
+        src: ~/{{ custom_domain }}.ca
+        dest: "{{ key_location }}"
+
+    - name: Setup TLS Lets Encrypt cert
+      tags: always
+      become: yes
+      copy:
+        src: ~/{{ custom_domain }}.crt
+        dest: "{{ key_location }}"
+
+    - name: Setup TLS Lets Encrypt key
+      tags: always
+      become: yes
+      copy:
+        src: ~/{{ custom_domain }}.key
+        dest: "{{ key_location }}"
+
+    - name: Check secret
+      shell: kubectl get secrets -n default -o json | grep vault-ha-tls
+      register: secret
+      ignore_errors: true
+
+    - name: Create TLS secret from files
+      command:
+        cmd: |
+          kubectl create secret generic vault-ha-tls
+          -n default
+          --from-file=vault.key={{ key_location }}{{ custom_domain }}.key
+          --from-file=vault.crt={{ key_location }}{{ custom_domain }}.crt
+          --from-file=vault.ca={{ key_location }}{{ custom_domain }}.ca
+      when: secret.stdout == ''
+
+    - name: Escape domain name
+      shell: echo {{ custom_domain }} | awk 'BEGIN {OFS=FS="\t"} {gsub(/\./,"\\.",$1)}1'
+      register: escaped_custom_domain
+
+    - name: Take coreDNS config file
+      copy:
+        src: coredns-cm.yml
+        dest: ~/
+    
+    - name: Add escaped custom domain
+      replace:
+        path: ~/coredns-cm.yml
+        regexp: '(\s+.*)input(\s+.*)?$'
+        replace: '\1(.*)-ns-(.*)\.{{ escaped_custom_domain.stdout }}\.$\2'
+        
+    - name: Add custom domain
+      replace:
+        path: ~/coredns-cm.yml
+        regexp: '(\s+.*)output$'
+        replace: '\1{{ custom_domain }}.'
+            
+    - name: Add custom domain to coreDNS
+      kubernetes.core.k8s:
+        state: present
+        src: coredns-cm.yml

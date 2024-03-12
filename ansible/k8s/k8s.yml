@@ -6,7 +6,6 @@
     - docker
     - k8s_base
     - k8s_master
-    - k8s_helm_charts
 
 - hosts: k8s_node
   become: true

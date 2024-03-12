@@ -1,0 +1,36 @@
+- name: Set up Kubernetes istio
+  become: false
+  tags:
+    - k8s_master
+  block:
+    - name: Install isto provisioner helm repo
+      kubernetes.core.helm_repository:
+        name: istio
+        repo_url: https://istio-release.storage.googleapis.com/charts
+
+    - name: Install istio base operator helm chart
+      kubernetes.core.helm:
+        namespace: istio-system
+        create_namespace: true
+        release_name: isto-base
+        chart_ref: istio/base
+        wait: true
+  
+    - name: Install istiod operator helm chart
+      kubernetes.core.helm:
+        namespace: istio-system
+        release_name: istod
+        chart_ref: istio/istiod
+        wait: true
+  
+    - name: Add mtls for Istio
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: security.istio.io/v1beta1
+          kind: PeerAuthentication
+          metadata:
+            name: default
+            namespace: istio-system
+          spec:
+            mtls:
+            mode: STRICT

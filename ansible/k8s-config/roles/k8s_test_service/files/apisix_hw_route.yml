@@ -1,0 +1,21 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: hellow-world-route
+  namespace: test-env
+spec:
+  http:
+  - name: hello-world
+    match:
+      hosts:
+      - apisix.{{ custom_domain }}
+      paths:
+      - /worlds
+    backends:
+    - serviceName: hello-world-1-svc
+      servicePort: 80
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        uri: "/"

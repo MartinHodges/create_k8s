@@ -92,3 +92,8 @@
         remote_src: true
       args:
         creates: /usr/local/bin/helm
+
+    - name: Install kubernetes python client dependency for ansible
+      pip:
+        name:
+        - kubernetes

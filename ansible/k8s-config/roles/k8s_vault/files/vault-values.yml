@@ -1,0 +1,52 @@
+global:
+  enabled: true
+  tlsDisable: false
+  namespace: vault
+ui:
+  enabled: true
+  serviceType: NodePort
+  serviceNodePort: 30802
+  externalIPs: 
+    - "{{ groups['k8s_master'][0] }}"
+server:
+   extraEnvironmentVars:
+      VAULT_CACERT: /vault/userconfig/vault-ha-tls/vault.ca
+      VAULT_TLSCERT: /vault/userconfig/vault-ha-tls/vault.crt
+      VAULT_TLSKEY: /vault/userconfig/vault-ha-tls/vault.key
+      VAULT_ADDR: "https://vault-internal-ns-vault.custom_domain:8200"
+   volumes:
+      - name: userconfig-vault-ha-tls
+        secret:
+         defaultMode: 420
+         secretName: vault-ha-tls
+   volumeMounts:
+      - mountPath: /vault/userconfig/vault-ha-tls
+        name: userconfig-vault-ha-tls
+        readOnly: true
+   dataStorage:
+     storageClass: nfs-client
+   standalone:
+     enabled: false
+   ha:
+     enabled: true
+     replicas: 2
+     raft:
+       enabled: true
+       setNodeId: true
+       config: |
+            ui = true
+            cluster_name = "vault-integrated-storage"
+            storage "raft" {
+               path  = "/vault/data/"
+            }
+
+            listener "tcp" {
+               address = "0.0.0.0:8200"
+               cluster_address = "0.0.0.0:8201"
+               tls_disable = false
+               tls_client_ca_file = "/vault/userconfig/vault-ha-tls/vault.ca"
+               tls_cert_file = "/vault/userconfig/vault-ha-tls/vault.crt"
+               tls_key_file  = "/vault/userconfig/vault-ha-tls/vault.key"
+            }
+            disable_mlock = true
+            service_registration "kubernetes" {}

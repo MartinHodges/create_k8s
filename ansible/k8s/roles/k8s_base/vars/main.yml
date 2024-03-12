@@ -4,5 +4,6 @@ k8s_dependencies:
 k8s_packages: 
   - kubeadm
 
-k8s_url_apt_key: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
-k8s_repository: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+k8s_url_apt_key: "https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key"
+k8s_gpgpath: /usr/share/keyrings/kubernetes-apt-keyring.gpg
+k8s_repository: "https://pkgs.k8s.io/core:/stable:/v1.29/deb/"

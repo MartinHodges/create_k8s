@@ -24,3 +24,6 @@
 # Ansible
 join*
 **/inventory
+
+#Others
+**/etc-hosts

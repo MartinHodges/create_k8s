@@ -1,0 +1,13 @@
+etcd:
+  persistence:
+    storageClass: nfs-client
+
+dashboard:
+  enabled: true
+
+ingress-controller:
+  enabled: true
+  config:
+    apisix:
+      serviceNamespace: apisix
+      

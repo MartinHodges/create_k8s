@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config-1
+  namespace: test-env
+data:
+  index.html: |
+    <html>
+    <h2>Hello world 1!!</h2>
+    </html>

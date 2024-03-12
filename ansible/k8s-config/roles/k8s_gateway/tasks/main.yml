@@ -1,0 +1,77 @@
+- name: Set up Kubernetes gateway application
+  become: false
+  tags:
+    - k8s_master
+  block:
+    - name: create test namespace
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: apisix
+        definition:
+          metadata:
+            labels:
+              istio-injection: enabled
+
+    - name: Install apisix repo
+      kubernetes.core.helm_repository:
+        name: apisix
+        repo_url: https://charts.apiseven.com
+
+    - name: Copy apisix-values file
+      tags: always
+      become: no
+      copy:
+        src: apisix-values.yml
+        dest: /home/server-admin/apisix-values.yml
+
+    - name: Install chart
+      kubernetes.core.helm:
+        namespace: apisix
+        release_name: apisix
+        chart_ref: apisix/apisix
+        values_files:
+        - /home/server-admin/apisix-values.yml
+
+    - name: Add fixed gateway service
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: apisix-gateway-fixed-svc
+            namespace: apisix
+            labels:
+              name: apisix-gateway-fixed-svc
+          spec:
+            ports:
+            - name: http
+              port: 80
+              targetPort: 9080
+              nodePort: 32006
+            selector: 
+              app.kubernetes.io/name: apisix
+            type: NodePort
+
+    - name: Add fixed gateway service
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: apisix-dashboard-fixed-svc
+            namespace: apisix
+            labels:
+              name: apisix-ui-svc
+          spec:
+            ports:
+            - name: http
+              port: 80
+              targetPort: 9000
+              nodePort: 30190
+            externalIPs:
+              - "{{ groups['k8s_master'][0] }}"
+            selector:
+              app.kubernetes.io/instance: apisix
+              app.kubernetes.io/name: dashboard
+            type: NodePort

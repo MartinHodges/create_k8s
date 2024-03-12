@@ -21,3 +21,9 @@ variable "project_prefix" {
   type = string
   default = "eg"
 }
+
+variable "custom_domain" {
+  description = "The custom domain you will be using."
+  type = string
+  default = "my_domain.own"
+}

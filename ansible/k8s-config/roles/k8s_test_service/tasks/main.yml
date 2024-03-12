@@ -1,0 +1,21 @@
+- name: Set up Kubernetes test service
+  become: false
+  tags:
+    - k8s_master
+  block:
+    - name: create test namespace
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: test-env
+        definition:
+          metadata:
+            labels:
+              istio-injection: enabled
+
+    - name: Deploy manifest files
+      kubernetes.core.k8s:
+        definition: "{{ lookup('template', '{{ item }}') | from_yaml }}"
+      with_fileglob:
+        - "*.yml"
+

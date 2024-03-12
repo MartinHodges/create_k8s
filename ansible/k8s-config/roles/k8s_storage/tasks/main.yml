@@ -1,21 +1,32 @@
-- name: Set up Kubernetes applications
+- name: Set up Kubernetes nfs storage
   become: false
   tags:
     - k8s_master
   block:
-    - name: Install nfs-subdir-external-provisioner repo
+    - name: create nfs-provisioner namespace
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: nfs-provisioner
+        definition:
+          metadata:
+            labels:
+              istio-injection: enabled
+
+    - name: Install nfs provisioner helm repo
       kubernetes.core.helm_repository:
         name: nfs-subdir-external-provisioner
         repo_url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
 
-    - name: Install chart
+    - name: Install nfs operator helm chart
       kubernetes.core.helm:
         namespace: nfs-provisioner
-        create_namespace: true
+        create_namespace: false
         release_name: nfs-subdir-external-provisioner
         chart_ref: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
         set_values:
           - value: nfs.server={{ groups['nfs_server'][0] }}
             value_type: string
-          - value: nfs.path=/pv-share/auto
+          - value: nfs.path="{{ share_point }}"
             value_type: string
+    
