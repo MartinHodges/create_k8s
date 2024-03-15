@@ -14,6 +14,15 @@
   - name: Install nginx
     package: name=nginx state=present force=yes install_recommends=no
 
+  - name: Update the proxy_params file
+    tags: always
+    become: yes
+    copy:
+      src: proxy_params
+      dest: /etc/nginx/proxy_params
+      owner: root
+      group: root
+      mode: 0440
 
   - name: has CUSTOM DOMAIN.crt already been uploaded?
     stat:
