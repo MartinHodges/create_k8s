@@ -52,8 +52,7 @@
       dest: /etc/ssl/{{ custom_domain }}.key
     when: custom_key.stat.exists == false
 
-
-  - name: generate nginx sites-available file from template
+  - name: generate CUSTOM_DOMAIN nginx sites-available file from template
     tags: always
     vars:
       k8s_master: "{{ groups['k8s_master'][0] }}"
@@ -61,8 +60,8 @@
       k8s_node_2: "{{ groups['k8s_node'][1] }}"
       domain: "{{ custom_domain }}"
     template:
-      src: "nginx_config.j2"
-      dest: /etc/nginx/sites-available/apisix.{{ custom_domain }}
+      src: "nginx-apisix-config.j2"
+      dest: /etc/nginx/sites-available/{{ custom_domain }}
       owner: root
       group: root
       mode: 0644
@@ -71,8 +70,8 @@
   - name: link to sites-enabled
     tags: always
     file:
-      src: /etc/nginx/sites-available/apisix.{{ custom_domain }}
-      dest: /etc/nginx/sites-enabled/apisix.{{ custom_domain }}
+      src: /etc/nginx/sites-available/{{ custom_domain }}
+      dest: /etc/nginx/sites-enabled/{{ custom_domain }}
       state: link
     notify: restart_nginx
 
