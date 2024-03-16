@@ -1,0 +1,16 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: iam-route
+  namespace: kc
+spec:
+  http:
+  - name: keycloak-iam
+    match:
+      hosts:
+      - iam.{{ custom_domain }}
+      paths:
+      - /*
+    backends:
+    - serviceName: my-kc-service
+      servicePort: 8080

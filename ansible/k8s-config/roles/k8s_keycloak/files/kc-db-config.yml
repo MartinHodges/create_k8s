@@ -1,0 +1,68 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: kc-db-cluster
+  namespace: kc
+  labels:
+    cnpg.io/reload: ""
+spec:
+  description: "Keycloak database cluster"
+  imageName: ghcr.io/cloudnative-pg/postgresql:15.1
+  instances: 1
+
+  superuserSecret:
+    name: pg-superuser
+
+  managed:
+    roles:
+      - name: keycloak
+        ensure: present
+        comment: user for Keycloak application
+        login: true
+        superuser: false
+        passwordSecret:
+          name: pg-keycloak-user
+
+  enableSuperuserAccess: true
+
+  startDelay: 30
+  stopDelay: 100
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    parameters:
+      max_connections: '200'
+      shared_buffers: '256MB'
+      effective_cache_size: '768MB'
+      maintenance_work_mem: '64MB'
+      checkpoint_completion_target: '0.9'
+      wal_buffers: '7864kB'
+      default_statistics_target: '100'
+      random_page_cost: '1.1'
+      effective_io_concurrency: '200'
+      work_mem: '655kB'
+      huge_pages: 'off'
+      min_wal_size: '1GB'
+      max_wal_size: '4GB'
+
+    pg_hba:
+    - host all all 10.0.0.0/8 scram-sha-256
+    - hostssl all all 192.0.0.0/8 scram-sha-256
+    - host all all 192.0.0.0/8 scram-sha-256
+    - host all all 127.0.0.0/24 scram-sha-256
+    - host all all all reject
+
+  bootstrap:
+    initdb:
+      database: keycloak
+      owner: keycloak
+      secret:
+        name: pg-keycloak-user
+      postInitApplicationSQL:
+        - create schema keycloak authorization keycloak
+        - grant all on schema keycloak to keycloak
+        - grant all on all tables in schema keycloak to keycloak 
+
+  storage:
+    size: 10Gi
+    storageClass: nfs-client

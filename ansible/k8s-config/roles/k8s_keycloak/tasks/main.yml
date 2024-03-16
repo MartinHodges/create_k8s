@@ -1,0 +1,119 @@
+- name: Set up Kubernetes gateway application
+  become: false
+  tags:
+    - k8s_master
+  block:
+  # Note that this requires the k8s_postgres role to be configured
+    - name: Create keycloak (kc) namespace
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: kc
+        definition:
+          metadata:
+            labels:
+              istio-injection: enabled
+
+    - name: Create postgres user secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: kubernetes.io/basic-auth
+          metadata:
+            name: pg-superuser
+            namespace: kc
+          data:
+            password: "{{ postgres_pw | b64encode }}"
+            username: cG9zdGdyZXM= #keycloak
+      
+    - name: Create keycloak user secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: kubernetes.io/basic-auth
+          metadata:
+            name: pg-keycloak-user
+            namespace: kc
+          data:
+            password: "{{ keycloak_pw | b64encode }}"
+            username: a2V5Y2xvYWs= #keycloak
+      
+    - name: Grab the database config file
+      copy:
+        src: kc-db-config.yml
+        dest: ~/
+
+    - name: Install Keycloak database
+      kubernetes.core.k8s:
+        state: present
+        src: kc-db-config.yml
+
+    - name: Download Keycloak CRDs
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/23.0.6/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+        dest: ~/keycloaks.k8s.keycloak.org-v1.yml
+        mode: '0664'
+
+    - name: Download Keycloak Realm Import CRDs
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/23.0.6/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+        dest: ~/keycloakrealmimports.k8s.keycloak.org-v1.yml
+        mode: '0664'
+
+    - name: Apply Keycloak CRD
+      kubernetes.core.k8s:
+        state: present
+        src: ~/keycloaks.k8s.keycloak.org-v1.yml
+
+    - name: Apply Keycloak Realm Import CRD
+      kubernetes.core.k8s:
+        state: present
+        src: ~/keycloakrealmimports.k8s.keycloak.org-v1.yml
+
+    - name: Download Keycloak operator
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/23.0.6/kubernetes/kubernetes.yml
+        dest: ~/keycloak-operator.yml
+        mode: '0664'
+
+    - name: Install Keycloak operator
+      kubernetes.core.k8s:
+        state: present
+        namespace: kc
+        src: ~/keycloak-operator.yml
+
+    - name: Grab the base Keycloak config file
+      template:
+        src: kc-config.j2
+        dest: ~/kc-config.yml
+
+    - name: Install Keycloak
+      kubernetes.core.k8s:
+        state: present
+        src: kc-config.yml
+
+    - name: Grab the APISIX route config file
+      template:
+        src: apisix-iam-route.j2
+        dest: ~/apisix-iam-route.yml
+
+    - name: Install APISIX route
+      kubernetes.core.k8s:
+        state: present
+        src: apisix-iam-route.yml
+
+    - name: Grab the APISIX secure route config file
+      template:
+        src: apisix-secure-route.j2
+        dest: ~/apisix-secure-route.yml
+
+    - name: Install APISIX secure route
+      kubernetes.core.k8s:
+        state: present
+        src: apisix-secure-route.yml
+      when: client_secret != ""
+

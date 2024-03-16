@@ -10,4 +10,12 @@ ingress-controller:
   config:
     apisix:
       serviceNamespace: apisix
-      
+
+apisix:
+  nginx:
+    configurationSnippet:
+      httpSrv: |
+        proxy_busy_buffers_size   32k;
+        proxy_buffers   4 32k;
+        proxy_buffer_size  16k;
+        

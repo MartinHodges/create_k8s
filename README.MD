@@ -17,6 +17,21 @@ The master node must have 2 cpus and has been made 4GB to match the workers.
 
 It creates the client configuration for the openVPN service. It also installs the gateway service as an egress point to the Internet for all private servers to allow them to access the repositories they need to update.
 
+## Secret Dependencies
+
+If you are creating the k8s_keycloak role, you need to supply the postgres and keycloak user passwords
+for the database. These must be suppplied as an Ansible vault file.  Create the file (the file extension should be .enc as this will prevent it being stored in the git repository):
+
+    postgres_pw: {your postgres user database password}
+    keycloak_pw: {your keycloak user database password}
+    client_secret: {"" or the Keycloak client secret for the apisix API Gateway}
+
+Then encrypt this file with:
+
+    ansible-vault encrypt {filename}
+
+Supply a secure password and rememebr it for later use.
+
 ## Create the VPC and VPSs
 
 To create the infrastructure, execute these from the project's root folder.
@@ -26,7 +41,7 @@ To create the infrastructure, execute these from the project's root folder.
     terraform plan
     terraform apply
 
-This will create an etc-hosts file that you can append to your /etc/hosts file for convenience.
+This will create an etc-hosts file that you can cut and paste into your /etc/hosts file for convenience.
 
 ## Configure the VPC
 
@@ -78,7 +93,7 @@ After starting the openVPN sever, you will need to create a client configuration
 
 This produces a client configuration in your home folder on your local machine (openvpn-client.ovpn). Yuo will need to install this into your local VPN client software and connect to the open VPN server. You cannot continue until you do this as you cannot access your private k8s servers.
 
-Each private VPS needs to be able to access the Internet in order to access upgrades and packages. The gateway provides a Network Address Translation (NAT) gateway and nginx proxy. We bootstrapped it earlier so now it just needs to be set up. Note the need to replace { } field with your own custom domain for which you shoud  have a wildcard certificate and CA certificate:
+Each private VPS needs to be able to access the Internet in order to access upgrades and packages. The gateway provides a Network Address Translation (NAT) gateway and nginx proxy. We bootstrapped it earlier so now it just needs to be set up. Note the need to replace { } field with your own custom domain for which you shoud have a wildcard certificate and CA certificate. Note that this config assumes you will install the APISIX API gateway and that apisix.{DOMAIN NAME} and iam.{DOMAIN NAME} are proxied through to the gateway:
 
     cd ../gateway
     ansible-playbook gateway.yml --extra-vars "custom_domain={DOMAIN NAME}"
@@ -109,10 +124,10 @@ The following will install:
 - k8s_vault - deploys Hashicorp Vault instance - 2 nodes *
 
 '*' note that this will pause whilst a set of manual commands are undertaken to initialise and
-unseal the vault. THe manual commands are shown after the following:
+unseal the vault. THe manual commands you require are shown after the following commands.  These commands will run the playbook. It will prompt you for the unlock password you defined at the start:
 
     cd ../k8s-config
-    ansible-playbook k8s-config.yml --extra-var "custom_domain={DOMAIN NAME}"
+    ansible-playbook k8s-config.yml --extra-var "custom_domain={DOMAIN NAME}" -e @{your encoded password file} --ask-vault-pass
 
 Commands to unseal the vault:
 
@@ -129,3 +144,8 @@ Commands to unseal the vault:
 
 Note that the -n 1 -t 1 creates a shamir key with 1 key and only needing 1 key to unseal.
 You may wish to use larger numbers, eg: -n 5 -t 3.
+
+After running the playbook, you will should have access to Keycloak. After setting up a realm
+called apisix and adding a client, you should have a secret for the client. Add this into your 
+secret file and then run the playbook again.
+

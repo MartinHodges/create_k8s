@@ -1,0 +1,27 @@
+- name: Set up Postgrs operator to enable database deployments
+  become: false
+  tags:
+    - k8s_master
+  block:
+    - name: Create Cloud Native PG namespace for operator
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: cnpg
+        definition:
+          metadata:
+            labels:
+              istio-injection: enabled
+    
+    - name: Install postgres provisioner helm repo
+      kubernetes.core.helm_repository:
+        name: cnpg
+        repo_url: https://cloudnative-pg.github.io/charts
+
+    - name: Install postgres provisioner helm chart
+      kubernetes.core.helm:
+        namespace: cnpg
+        create_namespace: false
+        release_name: cnpg
+        chart_ref: cnpg/cloudnative-pg
+

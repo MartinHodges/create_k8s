@@ -1,0 +1,25 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: my-kc
+  namespace: kc
+spec:
+  instances: 1
+  db:
+    vendor: postgres
+    host: kc-db-cluster-rw
+    port: 5432
+    database: keycloak
+    schema: keycloak
+    usernameSecret:
+      name: pg-keycloak-user
+      key: username
+    passwordSecret:
+      name: pg-keycloak-user
+      key: password
+  http:
+    httpEnabled: true
+  hostname:
+    adminUrl: https://iam.{{ custom_domain }}
+    hostname: iam.{{ custom_domain }}
+    strict: true

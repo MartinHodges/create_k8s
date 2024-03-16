@@ -8,3 +8,5 @@
     - k8s_test_service
     - k8s_monitoring
     - k8s_vault
+    - k8s_postgres
+    - k8s_keycloak

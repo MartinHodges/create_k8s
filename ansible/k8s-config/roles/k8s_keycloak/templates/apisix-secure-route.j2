@@ -1,0 +1,32 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: hellow-world-secure-route
+  namespace: test-env
+spec:
+  http:
+  - name: hello-world-secure
+    match:
+      hosts:
+      - secure.requillion-solutions.cloud
+      paths:
+      - /*
+    backends:
+    - serviceName: hello-world-1-svc
+      servicePort: 80
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        uri: "/"
+    - name: openid-connect
+      enable: true
+      config:
+        client_id: secure-apisix
+        client_secret: {{ client_secret }}
+        discovery: http://my-kc-service.kc:8080/realms/secure-apisix/.well-known/openid-configuration
+        scope: openid profile
+        bearer_only: false
+        realm: secure-apisix
+        introspection_endpoint_auth_method: client_secret_post
+        redirect_uri: /redirect_url 
