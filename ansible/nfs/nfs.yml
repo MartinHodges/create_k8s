@@ -1,5 +1,3 @@
----
-
 - hosts: nfs_server
   become: yes
   tasks:
@@ -78,49 +76,50 @@
     apt:
       deb: minio.deb
 
-  # - name: has config already been uploaded?
-  #   stat:
-  #     path: /etc/default/minio
-  #   register: minio_config
+  - name: has config already been uploaded?
+    stat:
+      path: /etc/default/minio
+    register: minio_config
 
-  - name: Create minIO password
-    set_fact:
-      minio_pw: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii', 'digits'], length=20) }}"
-    # when: minio_config.stat.exists == false
+  - block:
+    - name: Create minIO password
+      set_fact:
+        minio_pw: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii', 'digits'], length=20) }}"
 
-  - name: Save config
-    template:
-      src: minio-config.j2
-      dest: /etc/default/minio
-      owner: minio-user
-      group: minio-user
-      mode: 0600
-    notify: restart_minio
+    - name: Save config
+      template:
+        src: minio-config.j2
+        dest: /etc/default/minio
+        owner: minio-user
+        group: minio-user
+        mode: 0600
+      notify: restart_minio
 
-  - name: Create path for TLS certificates
-    file:
-      path: /etc/minio/certs
-      state: directory
-      owner: minio-user
-      group: minio-user
-      recurse: yes
-    notify: restart_minio
+    - name: Create path for TLS certificates
+      file:
+        path: /etc/minio/certs
+        state: directory
+        owner: minio-user
+        group: minio-user
+        recurse: yes
+      notify: restart_minio
 
-  - name: Copy in certificate
-    copy:
-      src: ~/{{ custom_domain }}.crt
-      dest: /etc/minio/certs/public.crt
-      owner: minio-user
-      group: minio-user
-    notify: restart_minio
-    
-  - name: Copy in key
-    copy:
-      src: ~/{{ custom_domain }}.key
-      dest: /etc/minio/certs/private.key
-      owner: minio-user
-      group: minio-user
-    notify: restart_minio    
+    - name: Copy in certificate
+      copy:
+        src: ~/{{ custom_domain }}.crt
+        dest: /etc/minio/certs/public.crt
+        owner: minio-user
+        group: minio-user
+      notify: restart_minio
+      
+    - name: Copy in key
+      copy:
+        src: ~/{{ custom_domain }}.key
+        dest: /etc/minio/certs/private.key
+        owner: minio-user
+        group: minio-user
+      notify: restart_minio    
+    when: minio_config.stat.exists == false
 
   handlers:
     - name: restart_nfs
