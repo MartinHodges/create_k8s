@@ -1,0 +1,11 @@
+# define where the data is to be held
+MINIO_VOLUMES="/mnt/minio"
+
+# define where to find the TLS certificates
+MINIO_OPTS="--certs-dir /etc/minio/certs --console-address :9001"
+
+# define the admin user (min 3 characters)
+MINIO_ROOT_USER=admin
+
+# define the defaut admin user password (min 8 characters)
+MINIO_ROOT_PASSWORD={{ minio_pw }}

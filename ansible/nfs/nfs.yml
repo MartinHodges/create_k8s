@@ -48,9 +48,89 @@
       mode: 0777
     notify: restart_nfs
 
+  - name: create minio group
+    tags: always
+    group:
+      name: minio-user
+      system: true
+
+  - name: create minio user
+    tags: always
+    user:
+      name: minio-user
+      groups: minio-user
+      shell: "/sbin/nologin"
+      append: true
+      create_home: no
+
+  - name: Create minIO folder
+    file:
+      path: /mnt/minio
+      state: directory
+      owner: minio-user
+
+  - name: Dowload minIO package
+    get_url:
+      url: https://dl.min.io/server/minio/release/linux-amd64/archive/minio_20240310025348.0.0_amd64.deb
+      dest: ./minio.deb
+
+  - name: Install minIO
+    apt:
+      deb: minio.deb
+
+  # - name: has config already been uploaded?
+  #   stat:
+  #     path: /etc/default/minio
+  #   register: minio_config
+
+  - name: Create minIO password
+    set_fact:
+      minio_pw: "{{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii', 'digits'], length=20) }}"
+    # when: minio_config.stat.exists == false
+
+  - name: Save config
+    template:
+      src: minio-config.j2
+      dest: /etc/default/minio
+      owner: minio-user
+      group: minio-user
+      mode: 0600
+    notify: restart_minio
+
+  - name: Create path for TLS certificates
+    file:
+      path: /etc/minio/certs
+      state: directory
+      owner: minio-user
+      group: minio-user
+      recurse: yes
+    notify: restart_minio
+
+  - name: Copy in certificate
+    copy:
+      src: ~/{{ custom_domain }}.crt
+      dest: /etc/minio/certs/public.crt
+      owner: minio-user
+      group: minio-user
+    notify: restart_minio
+    
+  - name: Copy in key
+    copy:
+      src: ~/{{ custom_domain }}.key
+      dest: /etc/minio/certs/private.key
+      owner: minio-user
+      group: minio-user
+    notify: restart_minio    
+
   handlers:
     - name: restart_nfs
       service:
         name: nfs-server
+        state: restarted
+        enabled: true
+
+    - name: restart_minio
+      service:
+        name: minio
         state: restarted
         enabled: true

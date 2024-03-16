@@ -103,10 +103,16 @@ Once you have this up and running and and can SSH into each of the k8s nodes, yo
     cd ../bootstrap
     ansible-playbook bootstrap.yml --limit k8s_master,k8s_node,nfs_server
 
-You can now create your nfs server:
+You can now create your nfs and minIO servers. This playbook expects to find a signed certificate and
+an assocaited key file in your ansible host machine to secure the TLS connections. These are expected
+to be called ~/{DOMAIN NAME}.crt and ~/{DOMAIN NAME}.key.
 
     cd ../nfs
-    ansible-playbook nfs.yml
+    ansible-playbook nfs.yml --extra-vars "custom_domain={DOMAIN NAME}"
+
+Note that this playbook creates a random, initial admin password for minIO which can be found in 
+/etc/default/minio. You should change this password through the user interface after it is successfully
+installed.
 
 Now everything is set up, Kubernetes can now be installed:
 
