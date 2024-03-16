@@ -28,3 +28,6 @@ join*
 #Others
 **/etc-hosts
 **/*.enc
+**/*.crt
+**/*.key
+**/*.ca
