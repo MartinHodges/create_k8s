@@ -34,3 +34,23 @@
           spec:
             mtls:
             mode: STRICT
+
+    - name: Download istioctl command line tool
+      get_url:
+        url: https://istio.io/downloadIstioctl
+        dest: ./istioctl
+        owner: server-admin
+        group: server-admin
+        mode: "700"
+
+    - name: Install istioctl
+      shell: ./istioctl
+
+    - name: Add istoctl to path
+      become: true
+      copy:
+        dest: /etc/profile.d/custom-path.sh
+        content: 'PATH=/home/server-admin/.istioctl/bin:$PATH'
+        mode: "0644"
+    
+
