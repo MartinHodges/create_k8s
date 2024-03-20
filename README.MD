@@ -155,3 +155,12 @@ After running the playbook, you will should have access to Keycloak. After setti
 called apisix and adding a client, you should have a secret for the client. Add this into your 
 secret file and then run the playbook again.
 
+With everything set up, you should be able to access the following user interfaces:
+
+    APISIX      ... http://k8s.{CUSTOM_DOMAIN}.cloud:30190
+    Grafana     ... http://k8s.{CUSTOM_DOMAIN}.cloud:3000 (requires port forward)
+    Keycloak    ... http://iam.{CUSTOM_DOMAIN}
+    Hello World ... https://apisix.requillion-solutions.cloud/worlds (unsecured)
+    Hello World ... https://secure.requillion-solutions.cloud/worlds (secured)
+    MinIO       ... https://nfs.requillion-solutions.cloud:9001/browser
+    Vault       ... http://k8s.requillion-solutions.cloud:30802
