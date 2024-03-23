@@ -34,3 +34,22 @@
         values_files:
         - /home/server-admin/grafana-values.yml
 
+    - name: Add service to make it accessible within the VPC
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: grafana-ui
+            namespace: monitoring
+            labels:
+              name: grafana-ui
+          spec:
+            ports:
+            - name: http
+              port: 3000
+              targetPort: 3000
+              nodePort: 31300
+            selector:
+              app.kubernetes.io/name: grafana
+            type: NodePort
