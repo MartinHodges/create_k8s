@@ -25,6 +25,7 @@ for the database. These must be suppplied as an Ansible vault file.  Create the 
     postgres_pw: {your postgres user database password}
     keycloak_pw: {your keycloak user database password}
     client_secret: {"" or the Keycloak client secret for the apisix API Gateway}
+    custom_domain: {the domain you are going to use with your cluster}
 
 Then encrypt this file with:
 
@@ -134,7 +135,7 @@ The following will install:
 These commands will run the playbook. It will prompt you for the unlock password you defined at the start:
 
     cd ../k8s-config
-    ansible-playbook k8s-config.yml --extra-var "custom_domain={DOMAIN NAME}" -e @{your encoded password file} --ask-vault-pass
+    ansible-playbook k8s-config.yml -e @{your encoded password file} --ask-vault-pass
 
 Note that vault will need to be initialised and unsealed. This requires a set of manual commands.
 The commands you require are shown below. They need to be executed on teh k8s-master node:
@@ -159,8 +160,8 @@ ansible secret file and then run the playbook again.
 
 With everything set up, you should be able to access the following user interfaces:
 
-    APISIX      ... http://k8s.{CUSTOM_DOMAIN}.cloud:30190
-    Grafana     ... http://k8s.{CUSTOM_DOMAIN}.cloud:3000 (requires port forward)
+    APISIX      ... http://k8s.{CUSTOM_DOMAIN}:30190
+    Grafana     ... http://k8s.{CUSTOM_DOMAIN}:31300
     Keycloak    ... http://iam.{CUSTOM_DOMAIN}
     Hello World ... https://apisix.{CUSTOM_DOMAIN}/worlds (unsecured)
     Hello World ... https://secure.{CUSTOM_DOMAIN}/worlds (secured)
