@@ -91,7 +91,7 @@ After starting the openVPN sever, you will need to create a client configuration
     cd ../openvpn-client
     ansible-playbook openvpn-client.yml
 
-This produces a client configuration in your home folder on your local machine (openvpn-client.ovpn). Yuo will need to install this into your local VPN client software and connect to the open VPN server. You cannot continue until you do this as you cannot access your private k8s servers.
+This produces a client configuration in your home folder on your local machine (openvpn-client.ovpn). You will need to install this into your local VPN client software and connect to the open VPN server. You cannot continue until you do this as you cannot access your private k8s servers.
 
 Each private VPS needs to be able to access the Internet in order to access upgrades and packages. The gateway provides a Network Address Translation (NAT) gateway and nginx proxy. We bootstrapped it earlier so now it just needs to be set up. Note the need to replace { } field with your own custom domain for which you shoud have a wildcard certificate and CA certificate. Note that this config assumes you will install the APISIX API gateway and that apisix.{DOMAIN NAME} and iam.{DOMAIN NAME} are proxied through to the gateway:
 
@@ -104,7 +104,7 @@ Once you have this up and running and and can SSH into each of the k8s nodes, yo
     ansible-playbook bootstrap.yml --limit k8s_master,k8s_node,nfs_server
 
 You can now create your nfs and minIO servers. This playbook expects to find a signed certificate and
-an assocaited key file in your ansible host machine to secure the TLS connections. These are expected
+an associated key file in your ansible host machine to secure the TLS connections. These are expected
 to be called ~/{DOMAIN NAME}.crt and ~/{DOMAIN NAME}.key.
 
     cd ../nfs
@@ -127,22 +127,24 @@ The following will install:
 - k8s_storage - setups a auto-provisioner for your NFS service (nfs-subdir-external-provisioner)
 - k8s_gateway - installs and configures an API Gateway (APISIX)
 - k8s_test_service - deploys an instance of a simple test service (nginx)
-- k8s_vault - deploys Hashicorp Vault instance - 2 nodes *
+- k8s_vault - deploys Hashicorp Vault instance - 2 nodes
+- k8s_postgres - installs a postgres operator
+- k8s_keycloak - deploys the Keycloak IAM backed by postgres
 
-'*' note that this will pause whilst a set of manual commands are undertaken to initialise and
-unseal the vault. THe manual commands you require are shown after the following commands.  These commands will run the playbook. It will prompt you for the unlock password you defined at the start:
+These commands will run the playbook. It will prompt you for the unlock password you defined at the start:
 
     cd ../k8s-config
     ansible-playbook k8s-config.yml --extra-var "custom_domain={DOMAIN NAME}" -e @{your encoded password file} --ask-vault-pass
 
-Commands to unseal the vault:
+Note that vault will need to be initialised and unsealed. This requires a set of manual commands.
+The commands you require are shown below. They need to be executed on teh k8s-master node:
 
     kubectl exec -it vault-0 -n vault -- sh
     vault status
     vault operator init -n 1 -t 1
     vault operator unseal {unseal key from previous command}
     exit
-    kubectl exec -it vault-0 -n vault -- sh
+    kubectl exec -it vault-1 -n vault -- sh
     vault status
     vault operator raft join http://vault-active:8200
     vault operator unseal {unseal key from earlier command}
@@ -151,16 +153,16 @@ Commands to unseal the vault:
 Note that the -n 1 -t 1 creates a shamir key with 1 key and only needing 1 key to unseal.
 You may wish to use larger numbers, eg: -n 5 -t 3.
 
-After running the playbook, you will should have access to Keycloak. After setting up a realm
+After running the playbook, you should have access to Keycloak. After setting up a realm
 called apisix and adding a client, you should have a secret for the client. Add this into your 
-secret file and then run the playbook again.
+ansible secret file and then run the playbook again.
 
 With everything set up, you should be able to access the following user interfaces:
 
     APISIX      ... http://k8s.{CUSTOM_DOMAIN}.cloud:30190
     Grafana     ... http://k8s.{CUSTOM_DOMAIN}.cloud:3000 (requires port forward)
     Keycloak    ... http://iam.{CUSTOM_DOMAIN}
-    Hello World ... https://apisix.requillion-solutions.cloud/worlds (unsecured)
-    Hello World ... https://secure.requillion-solutions.cloud/worlds (secured)
-    MinIO       ... https://nfs.requillion-solutions.cloud:9001/browser
-    Vault       ... http://k8s.requillion-solutions.cloud:30802
+    Hello World ... https://apisix.{CUSTOM_DOMAIN}/worlds (unsecured)
+    Hello World ... https://secure.{CUSTOM_DOMAIN}/worlds (secured)
+    MinIO       ... https://nfs.{CUSTOM_DOMAIN}:9001/browser
+    Vault       ... http://k8s.{CUSTOM_DOMAIN}:30802
