@@ -1,6 +1,6 @@
 # Creating Kubernetes cluster on Binary Lane
 
-This repo is designed for use with my [Medium article]() on how to build a Kubernetes (k8s) cluster on the Australian [Binary Lane](binarylane.com.au) cloud services.
+This repo is designed for use with my [Medium article](https://medium.com/@martin.hodges/creating-a-kubernetes-cluster-from-scratch-in-1-hour-using-automation-a25e387be547) on how to build a Kubernetes (k8s) cluster on the Australian [Binary Lane](binarylane.com.au) cloud services.
 
 It is designed as a way to explore Infrastructure as Code as well as Kubernetes clusters using tools such as Terraform, Ansible and OpenVPN.
 
