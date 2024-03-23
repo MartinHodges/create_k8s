@@ -76,9 +76,3 @@
         values_files:
         - /home/server-admin/vault-values.yml
       register: chartStatus
-
-    - name: Wait for unsealed vault
-      tags: always
-      pause:
-        prompt: 'Join the Raft cluster and Unseal all instances of Vault, then press Enter'
-      when: chartStatus.changed
